@@ -14,7 +14,87 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      items: {
+        Row: {
+          consumed: boolean | null
+          created_at: string | null
+          expiry_date: string
+          id: string
+          name: string
+          purchase_date: string | null
+          user_id: string
+        }
+        Insert: {
+          consumed?: boolean | null
+          created_at?: string | null
+          expiry_date: string
+          id?: string
+          name: string
+          purchase_date?: string | null
+          user_id: string
+        }
+        Update: {
+          consumed?: boolean | null
+          created_at?: string | null
+          expiry_date?: string
+          id?: string
+          name?: string
+          purchase_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id: string
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          role?: string | null
+        }
+        Relationships: []
+      }
+      retailer_products: {
+        Row: {
+          created_at: string | null
+          discount: number | null
+          discounted: boolean | null
+          expiry_date: string
+          id: string
+          name: string
+          retailer_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          discount?: number | null
+          discounted?: boolean | null
+          expiry_date: string
+          id?: string
+          name: string
+          retailer_id: string
+        }
+        Update: {
+          created_at?: string | null
+          discount?: number | null
+          discounted?: boolean | null
+          expiry_date?: string
+          id?: string
+          name?: string
+          retailer_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
