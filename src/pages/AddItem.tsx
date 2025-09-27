@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowLeft, Leaf, Calendar, Package, QrCode } from 'lucide-react';
+import AIFoodAdvisor from '@/components/AIFoodAdvisor';
+import CommunityHub from '@/components/CommunityHub';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { format } from 'date-fns';
@@ -27,7 +29,23 @@ export default function AddItem() {
   
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+
+  // Pre-fill data from barcode scanner
+  useEffect(() => {
+    if (location.state) {
+      const { productName, estimatedShelfLife } = location.state as any;
+      if (productName) {
+        setName(productName);
+      }
+      if (estimatedShelfLife) {
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + estimatedShelfLife);
+        setExpiryDate(format(expiryDate, 'yyyy-MM-dd'));
+      }
+    }
+  }, [location.state]);
 
   const validateForm = () => {
     try {
@@ -217,18 +235,21 @@ export default function AddItem() {
           </CardContent>
         </Card>
 
-        {/* Tips Card */}
-        <Card className="mt-6 bg-primary/5 border-primary/20">
-          <CardHeader>
-            <CardTitle className="text-primary">💡 Pro Tips</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>• Check expiry dates regularly to get timely alerts</p>
-            <p>• Use the "best before" date rather than "use by" when available</p>
-            <p>• Mark items as consumed to track your waste reduction progress</p>
-            <p>• Add items as soon as you buy them for accurate tracking</p>
-          </CardContent>
-        </Card>
+        {/* AI Food Advisor */}
+        {name && (
+          <div className="mt-6">
+            <AIFoodAdvisor 
+              productName={name}
+              category="general"
+              daysUntilExpiry={expiryDate ? Math.floor((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 7}
+            />
+          </div>
+        )}
+
+        {/* Community Hub */}
+        <div className="mt-6">
+          <CommunityHub />
+        </div>
       </div>
     </div>
   );

@@ -6,11 +6,28 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { AlertTriangle, Plus, Leaf, BarChart3, LogOut, CheckCircle, XCircle } from 'lucide-react';
+import { 
+  Leaf, 
+  Package, 
+  Plus, 
+  Calendar, 
+  AlertTriangle, 
+  CheckCircle, 
+  Trash2, 
+  LogOut,
+  BarChart3,
+  Moon,
+  Sun,
+  Scan,
+  XCircle
+} from 'lucide-react';
+import BarcodeScanner from '@/components/BarcodeScanner';
+import GameProgress from '@/components/GameProgress';
+import { useDarkMode } from '@/hooks/useDarkMode';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, isPast } from 'date-fns';
 
-interface FoodItem {
+interface Item {
   id: string;
   name: string;
   purchase_date: string;
@@ -20,9 +37,12 @@ interface FoodItem {
 }
 
 export default function Dashboard() {
-  const [items, setItems] = useState<FoodItem[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showScanner, setShowScanner] = useState(false);
+  
   const { user, profile, signOut } = useAuth();
+  const { theme, setTheme, isDark } = useDarkMode();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -31,47 +51,35 @@ export default function Dashboard() {
       navigate('/auth');
       return;
     }
-
-    if (profile?.role === 'retailer') {
+    
+    if (profile && profile.role === 'retailer') {
       navigate('/retailer');
       return;
     }
-
+    
     fetchItems();
   }, [user, profile, navigate]);
 
   const fetchItems = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('items')
         .select('*')
-        .eq('user_id', user?.id)
-        .order('expiry_date', { ascending: true });
+        .eq('user_id', user.id)
+        .order('expiry_date');
 
       if (error) throw error;
       setItems(data || []);
     } catch (error: any) {
       toast({
-        title: "Error fetching items",
+        title: "Error loading items",
         description: error.message,
         variant: "destructive"
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getItemStatus = (expiryDate: string) => {
-    const expiry = new Date(expiryDate);
-    const today = new Date();
-    const daysUntilExpiry = differenceInDays(expiry, today);
-
-    if (isPast(expiry)) {
-      return { status: 'expired', color: 'expired', days: Math.abs(daysUntilExpiry) };
-    } else if (daysUntilExpiry <= 3) {
-      return { status: 'warning', color: 'warning', days: daysUntilExpiry };
-    } else {
-      return { status: 'safe', color: 'safe', days: daysUntilExpiry };
     }
   };
 
@@ -84,11 +92,12 @@ export default function Dashboard() {
 
       if (error) throw error;
       
-      await fetchItems();
       toast({
-        title: "Item marked as consumed",
-        description: "Great job reducing food waste!"
+        title: "Item consumed!",
+        description: "Great job reducing food waste! 🌱"
       });
+      
+      fetchItems();
     } catch (error: any) {
       toast({
         title: "Error updating item",
@@ -107,11 +116,12 @@ export default function Dashboard() {
 
       if (error) throw error;
       
-      await fetchItems();
       toast({
         title: "Item deleted",
-        description: "Item has been removed from your list"
+        description: "Item removed from your list"
       });
+      
+      fetchItems();
     } catch (error: any) {
       toast({
         title: "Error deleting item",
@@ -121,16 +131,34 @@ export default function Dashboard() {
     }
   };
 
-  const nearExpiryItems = items.filter(item => !item.consumed && getItemStatus(item.expiry_date).status === 'warning');
-  const expiredItems = items.filter(item => !item.consumed && getItemStatus(item.expiry_date).status === 'expired');
+  const getItemStatus = (expiryDate: string) => {
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    const daysUntilExpiry = differenceInDays(expiry, today);
+    
+    if (daysUntilExpiry < 0) return { status: 'expired', color: 'bg-destructive', text: 'Expired' };
+    if (daysUntilExpiry <= 2) return { status: 'critical', color: 'bg-orange-500', text: 'Critical' };
+    if (daysUntilExpiry <= 5) return { status: 'warning', color: 'bg-yellow-500', text: 'Warning' };
+    return { status: 'safe', color: 'bg-green-500', text: 'Safe' };
+  };
+
+  const stats = {
+    total: items.length,
+    consumed: items.filter(item => item.consumed).length,
+    expiring: items.filter(item => !item.consumed && getItemStatus(item.expiry_date).status === 'warning').length,
+    expired: items.filter(item => !item.consumed && getItemStatus(item.expiry_date).status === 'expired').length
+  };
+
+  const activeItems = items.filter(item => !item.consumed);
+  const expiringItems = activeItems.filter(item => {
+    const status = getItemStatus(item.expiry_date);
+    return status.status === 'warning' || status.status === 'critical';
+  });
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Leaf className="h-8 w-8 text-primary mx-auto animate-pulse" />
-          <p className="mt-2 text-muted-foreground">Loading your items...</p>
-        </div>
+        <div className="animate-pulse text-muted-foreground">Loading your food tracker...</div>
       </div>
     );
   }
@@ -146,14 +174,21 @@ export default function Dashboard() {
               <h1 className="text-xl font-bold">FreshTrack</h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">
-                Welcome, {profile?.email}
+              <span className="text-sm text-muted-foreground hidden md:block">
+                Welcome back!
               </span>
-              <Button variant="outline" size="sm" onClick={() => navigate('/reports')}>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              >
+                {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" onClick={() => navigate('/reports')}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Reports
               </Button>
-              <Button variant="outline" size="sm" onClick={signOut}>
+              <Button variant="outline" onClick={signOut}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
@@ -163,152 +198,199 @@ export default function Dashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Alerts */}
-        {(nearExpiryItems.length > 0 || expiredItems.length > 0) && (
-          <Card className="mb-6 border-warning bg-warning/5">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-warning">
-                <AlertTriangle className="h-5 w-5" />
-                Food Expiry Alerts
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {expiredItems.length > 0 && (
-                <div className="mb-4">
-                  <p className="font-medium text-expired mb-2">Expired Items ({expiredItems.length})</p>
-                  <div className="space-y-1">
-                    {expiredItems.slice(0, 3).map(item => (
-                      <div key={item.id} className="text-sm text-muted-foreground">
-                        • {item.name} (expired {getItemStatus(item.expiry_date).days} days ago)
-                      </div>
-                    ))}
-                    {expiredItems.length > 3 && (
-                      <div className="text-sm text-muted-foreground">
-                        + {expiredItems.length - 3} more expired items
-                      </div>
-                    )}
+        {/* Game Progress & Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-2">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <Package className="h-8 w-8 text-primary" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Items</p>
+                      <p className="text-2xl font-bold">{stats.total}</p>
+                    </div>
                   </div>
-                </div>
-              )}
-              {nearExpiryItems.length > 0 && (
-                <div>
-                  <p className="font-medium text-warning mb-2">Expiring Soon ({nearExpiryItems.length})</p>
-                  <div className="space-y-1">
-                    {nearExpiryItems.slice(0, 3).map(item => (
-                      <div key={item.id} className="text-sm text-muted-foreground">
-                        • {item.name} (expires in {getItemStatus(item.expiry_date).days} days)
-                      </div>
-                    ))}
-                    {nearExpiryItems.length > 3 && (
-                      <div className="text-sm text-muted-foreground">
-                        + {nearExpiryItems.length - 3} more expiring soon
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                </CardContent>
+              </Card>
 
-        {/* Add Item Button */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <CheckCircle className="h-8 w-8 text-green-500" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Consumed</p>
+                      <p className="text-2xl font-bold">{stats.consumed}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <AlertTriangle className="h-8 w-8 text-orange-500" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Expiring Soon</p>
+                      <p className="text-2xl font-bold">{stats.expiring}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Expiry Alerts */}
+            {expiringItems.length > 0 && (
+              <Card className="mb-6 border-orange-200 bg-orange-50">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-orange-700">
+                    <AlertTriangle className="h-5 w-5" />
+                    Food Expiry Alerts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {expiringItems.slice(0, 3).map(item => {
+                      const status = getItemStatus(item.expiry_date);
+                      const daysLeft = differenceInDays(new Date(item.expiry_date), new Date());
+                      return (
+                        <div key={item.id} className="text-sm">
+                          • <strong>{item.name}</strong> - {daysLeft >= 0 ? `${daysLeft} days left` : `Expired ${Math.abs(daysLeft)} days ago`}
+                        </div>
+                      );
+                    })}
+                    {expiringItems.length > 3 && (
+                      <div className="text-sm text-muted-foreground">
+                        + {expiringItems.length - 3} more items need attention
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+          
+          <div className="lg:col-span-1">
+            <GameProgress 
+              totalItems={stats.total}
+              consumedItems={stats.consumed}
+              moneySaved={stats.consumed * 50}
+              co2Reduced={stats.consumed * 0.5}
+            />
+          </div>
+        </div>
+
+        {/* Add Item Buttons */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Your Food Items</h2>
-          <Button onClick={() => navigate('/add-item')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Item
-          </Button>
+          <h2 className="text-xl font-semibold">Your Food Items</h2>
+          <div className="flex gap-4">
+            <Button onClick={() => setShowScanner(true)}>
+              <Scan className="h-4 w-4 mr-2" />
+              Scan Barcode
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/add-item')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manually
+            </Button>
+          </div>
         </div>
 
         {/* Items Grid */}
-        {items.length === 0 ? (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Leaf className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No items yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Start tracking your food items to reduce waste and save money!
-              </p>
-              <Button onClick={() => navigate('/add-item')}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Item
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {items.map((item) => {
-              const itemStatus = getItemStatus(item.expiry_date);
+        <div className="grid gap-4">
+          {items.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center">
+                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="font-semibold mb-2">No items yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  Start tracking your food to reduce waste and save money!
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Button onClick={() => setShowScanner(true)}>
+                    <Scan className="h-4 w-4 mr-2" />
+                    Scan Barcode
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate('/add-item')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Manually
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            items.map((item) => {
+              const status = getItemStatus(item.expiry_date);
+              const daysLeft = differenceInDays(new Date(item.expiry_date), new Date());
+              
               return (
-                <Card key={item.id} className={`${item.consumed ? 'opacity-60' : ''}`}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">{item.name}</CardTitle>
-                      <Badge 
-                        variant={itemStatus.status === 'safe' ? 'default' : 'secondary'}
-                        className={
-                          itemStatus.status === 'expired' 
-                            ? 'bg-expired text-expired-foreground' 
-                            : itemStatus.status === 'warning'
-                            ? 'bg-warning text-warning-foreground'
-                            : 'bg-safe text-safe-foreground'
-                        }
-                      >
-                        {itemStatus.status === 'expired' 
-                          ? 'Expired' 
-                          : itemStatus.status === 'warning'
-                          ? 'Near Expiry'
-                          : 'Fresh'
-                        }
-                      </Badge>
-                    </div>
-                    <CardDescription>
-                      <div className="space-y-1">
-                        <div>Purchased: {format(new Date(item.purchase_date), 'MMM d, yyyy')}</div>
-                        <div>Expires: {format(new Date(item.expiry_date), 'MMM d, yyyy')}</div>
-                        <div className="font-medium">
-                          {itemStatus.status === 'expired'
-                            ? `Expired ${itemStatus.days} days ago`
-                            : itemStatus.status === 'warning'
-                            ? `Expires in ${itemStatus.days} days`
-                            : `${itemStatus.days} days remaining`
-                          }
+                <Card key={item.id} className={`hover:shadow-md transition-shadow ${item.consumed ? 'opacity-60' : ''}`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold">{item.name}</h3>
+                          <Badge variant="secondary" className={`${status.color} text-white`}>
+                            {status.text}
+                          </Badge>
+                          {item.consumed && (
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              ✓ Consumed
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>Expires: {format(new Date(item.expiry_date), 'MMM dd, yyyy')}</span>
+                          </div>
+                          <div>
+                            {daysLeft >= 0 ? `${daysLeft} days left` : `Expired ${Math.abs(daysLeft)} days ago`}
+                          </div>
                         </div>
                       </div>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {item.consumed ? (
-                      <div className="flex items-center gap-2 text-safe">
-                        <CheckCircle className="h-4 w-4" />
-                        <span className="text-sm font-medium">Consumed</span>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => markAsConsumed(item.id)}
-                          className="flex-1"
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Consumed
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => deleteItem(item.id)}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+                      {!item.consumed && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => markAsConsumed(item.id)}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            Consumed
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteItem(item.id)}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );
-            })}
-          </div>
+            })
+          )}
+        </div>
+        
+        {/* Barcode Scanner Modal */}
+        {showScanner && (
+          <BarcodeScanner
+            onScanSuccess={(productData) => {
+              setShowScanner(false);
+              // Navigate to add item with pre-filled data
+              navigate('/add-item', { 
+                state: { 
+                  productName: productData.name,
+                  estimatedShelfLife: productData.estimatedShelfLife
+                }
+              });
+            }}
+            onClose={() => setShowScanner(false)}
+          />
         )}
       </div>
     </div>
