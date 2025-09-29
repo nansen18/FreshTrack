@@ -165,13 +165,14 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Consumer Navigation */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Leaf className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-bold">FreshTrack</h1>
+              <Badge variant="outline" className="ml-2 text-xs">Consumer</Badge>
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground hidden md:block">
@@ -242,9 +243,9 @@ export default function Dashboard() {
             
             {/* Expiry Alerts */}
             {expiringItems.length > 0 && (
-              <Card className="mb-6 border-orange-200 bg-orange-50">
+              <Card className="mb-6 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-700">
+                  <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-200">
                     <AlertTriangle className="h-5 w-5" />
                     Food Expiry Alerts
                   </CardTitle>
@@ -330,9 +331,17 @@ export default function Dashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold">{item.name}</h3>
-                          <Badge variant="secondary" className={`${status.color} text-white`}>
-                            {status.text}
-                          </Badge>
+                           <Badge 
+                             variant="secondary" 
+                             className={
+                               status.status === 'expired' ? 'bg-destructive text-destructive-foreground' :
+                               status.status === 'critical' ? 'bg-orange-500 text-white' :
+                               status.status === 'warning' ? 'bg-yellow-500 text-black' :
+                               'bg-green-500 text-white'
+                             }
+                           >
+                             {status.text}
+                           </Badge>
                           {item.consumed && (
                             <Badge variant="outline" className="text-green-600 border-green-600">
                               ✓ Consumed
@@ -351,14 +360,15 @@ export default function Dashboard() {
                       </div>
                       {!item.consumed && (
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => markAsConsumed(item.id)}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Consumed
-                          </Button>
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => markAsConsumed(item.id)}
+                             className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-600 dark:hover:bg-green-700"
+                           >
+                             <CheckCircle className="h-4 w-4 mr-1" />
+                             Consumed
+                           </Button>
                           <Button
                             variant="outline"
                             size="sm"

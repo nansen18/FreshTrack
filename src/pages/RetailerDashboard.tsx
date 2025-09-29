@@ -177,15 +177,23 @@ export default function RetailerDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Retailer Navigation */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Store className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-bold">Retailer Dashboard</h1>
+              <Badge variant="outline" className="ml-2 text-xs">Retailer</Badge>
             </div>
             <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground hidden md:block">
+                Manage your inventory
+              </span>
+              <Button variant="outline" onClick={() => navigate('/dashboard')}>
+                <Users className="h-4 w-4 mr-2" />
+                Community
+              </Button>
               <Button variant="outline" onClick={() => navigate('/reports')}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Reports
@@ -328,9 +336,17 @@ export default function RetailerDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold">{product.name}</h3>
-                          <Badge variant="secondary" className={`${status.color} text-white`}>
-                            {status.text}
-                          </Badge>
+                           <Badge 
+                             variant="secondary" 
+                             className={
+                               status.status === 'expired' ? 'bg-destructive text-destructive-foreground' :
+                               status.status === 'critical' ? 'bg-orange-500 text-white' :
+                               status.status === 'warning' ? 'bg-yellow-500 text-black' :
+                               'bg-green-500 text-white'
+                             }
+                           >
+                             {status.text}
+                           </Badge>
                           {product.discounted && (
                             <Badge variant="outline" className="text-green-600 border-green-600">
                               {product.discount}% OFF

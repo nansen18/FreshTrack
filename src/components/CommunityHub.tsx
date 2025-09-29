@@ -3,6 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Users, 
   Heart, 
@@ -30,6 +34,7 @@ interface CommunityItem {
 }
 
 export default function CommunityHub() {
+  const { toast } = useToast();
   const [availableItems, setAvailableItems] = useState<CommunityItem[]>([
     {
       id: '1',
@@ -73,29 +78,79 @@ export default function CommunityHub() {
   ]);
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [newFoodItem, setNewFoodItem] = useState({
+    name: '',
+    description: '',
+    expiryDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
+    location: '',
+    category: '',
+    quantity: '',
+    userName: 'You',
+    userInitials: 'Y'
+  });
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      'Fruits': 'bg-green-100 text-green-800',
-      'Vegetables': 'bg-emerald-100 text-emerald-800',
-      'Bakery': 'bg-orange-100 text-orange-800',
-      'Dairy': 'bg-blue-100 text-blue-800',
-      'Grains': 'bg-yellow-100 text-yellow-800',
-      'default': 'bg-gray-100 text-gray-800'
+      'Fruits': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'Vegetables': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+      'Bakery': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'Dairy': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'Grains': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'default': 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
     };
     return colors[category] || colors['default'];
   };
 
   const getUrgencyColor = (expiryDate: string) => {
     const days = Math.floor((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    if (days <= 1) return 'border-red-200 bg-red-50';
-    if (days <= 2) return 'border-orange-200 bg-orange-50';
-    return 'border-green-200 bg-green-50';
+    if (days <= 1) return 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950';
+    if (days <= 2) return 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950';
+    return 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950';
   };
 
   const handleClaim = (itemId: string) => {
     // Simulate claiming an item
     setAvailableItems(prev => prev.filter(item => item.id !== itemId));
+    toast({
+      title: "Item claimed!",
+      description: "Thank you for helping reduce food waste! 🌱"
+    });
+  };
+
+  const handleShare = (item: CommunityItem) => {
+    const shareText = `Check out this free food item: ${item.name} - ${item.description}. Available in ${item.location}`;
+    const shareUrl = `${window.location.origin}/community?item=${item.id}`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: `FreshTrack - ${item.name}`,
+        text: shareText,
+        url: shareUrl
+      });
+    } else {
+      navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+      toast({
+        title: "Link copied!",
+        description: "Share link has been copied to clipboard"
+      });
+    }
+  };
+
+  const handleAddFood = async (foodData: Omit<CommunityItem, 'id' | 'postedAt'>) => {
+    // In a real app, this would save to Supabase
+    const newItem: CommunityItem = {
+      ...foodData,
+      id: Date.now().toString(),
+      postedAt: 'Just now'
+    };
+    
+    setAvailableItems(prev => [newItem, ...prev]);
+    setShowAddForm(false);
+    
+    toast({
+      title: "Food shared successfully!",
+      description: "Your item is now available for the community"
+    });
   };
 
   return (
@@ -133,25 +188,96 @@ export default function CommunityHub() {
 
       {/* Add Item Form */}
       {showAddForm && (
-        <Card className="border-primary/20 bg-primary/5">
+        <Card className="border-primary/20 bg-primary/5 dark:bg-primary/10">
           <CardHeader>
             <CardTitle className="text-primary">Share Your Food</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Package className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-blue-800">Demo Feature</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <Label htmlFor="food-name">Food Name</Label>
+                <Input
+                  id="food-name"
+                  placeholder="e.g., Fresh Bananas"
+                  value={newFoodItem.name}
+                  onChange={(e) => setNewFoodItem({ ...newFoodItem, name: e.target.value })}
+                />
               </div>
-              <p className="text-sm text-blue-700">
-                This is a preview of the community sharing feature. In the full version, you would be able to:
-              </p>
-              <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                <li>• Post items you want to share</li>
-                <li>• Set pickup locations and times</li>
-                <li>• Chat with community members</li>
-                <li>• Track your impact on food waste reduction</li>
-              </ul>
+              <div>
+                <Label htmlFor="food-category">Category</Label>
+                <Input
+                  id="food-category"
+                  placeholder="e.g., Fruits, Vegetables"
+                  value={newFoodItem.category}
+                  onChange={(e) => setNewFoodItem({ ...newFoodItem, category: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="food-quantity">Quantity</Label>
+                <Input
+                  id="food-quantity"
+                  placeholder="e.g., 1 kg, 2 loaves"
+                  value={newFoodItem.quantity}
+                  onChange={(e) => setNewFoodItem({ ...newFoodItem, quantity: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="food-expiry">Expiry Date</Label>
+                <Input
+                  id="food-expiry"
+                  type="date"
+                  value={newFoodItem.expiryDate}
+                  onChange={(e) => setNewFoodItem({ ...newFoodItem, expiryDate: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="food-location">Pickup Location</Label>
+                <Input
+                  id="food-location"
+                  placeholder="e.g., Koramangala, Bangalore"
+                  value={newFoodItem.location}
+                  onChange={(e) => setNewFoodItem({ ...newFoodItem, location: e.target.value })}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="food-description">Description</Label>
+                <Textarea
+                  id="food-description"
+                  placeholder="Brief description of the food item and its condition"
+                  value={newFoodItem.description}
+                  onChange={(e) => setNewFoodItem({ ...newFoodItem, description: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  if (newFoodItem.name && newFoodItem.location && newFoodItem.category) {
+                    handleAddFood({
+                      ...newFoodItem,
+                      distance: 0.5,
+                      userName: 'You',
+                      userInitials: 'Y'
+                    });
+                    setNewFoodItem({
+                      name: '',
+                      description: '',
+                      expiryDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
+                      location: '',
+                      category: '',
+                      quantity: '',
+                      userName: 'You',
+                      userInitials: 'Y'
+                    });
+                  }
+                }}
+                disabled={!newFoodItem.name || !newFoodItem.location || !newFoodItem.category}
+              >
+                Share Food
+              </Button>
+              <Button variant="outline" onClick={() => setShowAddForm(false)}>
+                Cancel
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -210,7 +336,11 @@ export default function CommunityHub() {
                       <Heart className="h-4 w-4 mr-1" />
                       Claim Item
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleShare(item)}
+                    >
                       <Share2 className="h-4 w-4 mr-1" />
                       Share
                     </Button>
