@@ -3,7 +3,9 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { X, Scan, AlertTriangle, CheckCircle, Clock, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { X, Scan, AlertTriangle, CheckCircle, Clock, Image as ImageIcon, Loader2, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createWorker } from 'tesseract.js';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,6 +71,10 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
   const [productData, setProductData] = useState<Product | null>(null);
   const [scanMode, setScanMode] = useState<ScanMode>('barcode');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [dateCandidates, setDateCandidates] = useState<Date[]>([]);
+  const [showManualEntry, setShowManualEntry] = useState(false);
+  const [manualDate, setManualDate] = useState('');
+  const [detectedProductName, setDetectedProductName] = useState('');
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -122,47 +128,125 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
     return 'safe';
   };
 
-  const parseDateFromText = (text: string): Date | null => {
-    // Common date patterns for expiry/manufacture dates
-    const patterns = [
-      // EXP: DD/MM/YYYY or EXP DD/MM/YY
-      /(?:exp|expiry|expires|best before|use by)[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i,
-      // MFG: DD/MM/YYYY
-      /(?:mfg|manufactured|mfd|production date)[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/i,
-      // Plain date DD/MM/YYYY or DD-MM-YYYY
-      /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/,
-    ];
-
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match) {
-        let [, day, month, year] = match;
-        
-        // Handle 2-digit years
-        if (year.length === 2) {
-          const currentYear = new Date().getFullYear();
-          const currentCentury = Math.floor(currentYear / 100) * 100;
-          year = String(currentCentury + parseInt(year));
+  const preprocessImage = async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not get canvas context'));
+          return;
         }
 
+        // Resize for better OCR (max 2000px width)
+        const scale = Math.min(2000 / img.width, 2000 / img.height, 1);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+
+        // Draw and enhance
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Convert to grayscale and enhance contrast
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          // Enhance contrast
+          const enhanced = gray < 128 ? Math.max(0, gray - 30) : Math.min(255, gray + 30);
+          data[i] = data[i + 1] = data[i + 2] = enhanced;
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  const parseDateFromText = (text: string): Date[] => {
+    const foundDates: Date[] = [];
+    
+    // Enhanced date patterns
+    const patterns = [
+      // EXP/EXPIRY/EXPIRES/BEST BEFORE/USE BY with dates
+      /(?:exp(?:iry)?|expires?|best\s*before|use\s*by)[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/gi,
+      // MFG/MANUFACTURED with dates
+      /(?:mfg|manufactured|mfd|production\s*date)[:\s]*(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/gi,
+      // YYYY-MM-DD format
+      /(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/g,
+      // MM/DD/YYYY or DD/MM/YYYY (standalone)
+      /\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})\b/g,
+      // DD-MM-YY or MM-DD-YY
+      /\b(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})\b/g,
+    ];
+
+    const textLines = text.split('\n');
+    
+    for (const pattern of patterns) {
+      const isMfgPattern = pattern.source.includes('mfg|manufactured');
+      const isYYYYFirst = pattern.source.startsWith('(\\d{4})');
+      let match;
+      
+      // Reset regex
+      pattern.lastIndex = 0;
+      
+      while ((match = pattern.exec(text)) !== null) {
         try {
-          // Create date in YYYY-MM-DD format
-          const dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          const date = new Date(dateStr);
+          let day, month, year;
           
-          if (!isNaN(date.getTime())) {
-            // If it's a manufacture date, add typical shelf life
-            if (pattern.source.includes('mfg|manufactured')) {
-              date.setDate(date.getDate() + 365); // Add 1 year shelf life
+          if (isYYYYFirst) {
+            [, year, month, day] = match;
+          } else {
+            [, day, month, year] = match;
+          }
+          
+          // Handle 2-digit years
+          if (year.length === 2) {
+            const currentYear = new Date().getFullYear();
+            const currentCentury = Math.floor(currentYear / 100) * 100;
+            const yearNum = parseInt(year);
+            // If year is 00-50, assume 2000s, else 1900s
+            year = String(yearNum <= 50 ? currentCentury + yearNum : currentCentury - 100 + yearNum);
+          }
+
+          // Try DD/MM/YYYY first
+          let dateStr = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          let date = new Date(dateStr);
+          
+          // If invalid, try MM/DD/YYYY
+          if (isNaN(date.getTime())) {
+            dateStr = `${year}-${day.padStart(2, '0')}-${month.padStart(2, '0')}`;
+            date = new Date(dateStr);
+          }
+          
+          if (!isNaN(date.getTime()) && date.getFullYear() > 2000 && date.getFullYear() < 2100) {
+            // If manufacture date, add 1 year shelf life
+            if (isMfgPattern) {
+              date.setFullYear(date.getFullYear() + 1);
             }
-            return date;
+            
+            // Only add future dates or recent past (max 1 month old)
+            const daysDiff = differenceInDays(date, new Date());
+            if (daysDiff > -30) {
+              foundDates.push(date);
+            }
           }
         } catch (e) {
           continue;
         }
       }
     }
-    return null;
+    
+    // Remove duplicates
+    const uniqueDates = Array.from(new Set(foundDates.map(d => d.getTime())))
+      .map(t => new Date(t))
+      .sort((a, b) => a.getTime() - b.getTime());
+    
+    return uniqueDates;
   };
 
   const extractProductName = (text: string): string => {
@@ -233,51 +317,124 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
     }
   };
 
+  const performOCR = async (imageData: string, rotation = 0): Promise<string> => {
+    const worker = await createWorker('eng');
+    
+    if (rotation !== 0) {
+      // Rotate image if needed
+      const img = new Image();
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.src = imageData;
+      });
+      
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context failed');
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      imageData = canvas.toDataURL('image/png');
+    }
+    
+    const { data: { text } } = await worker.recognize(imageData);
+    await worker.terminate();
+    return text;
+  };
+
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsProcessing(true);
+    setDateCandidates([]);
+    setShowManualEntry(false);
+    
     toast({
       title: "Processing Image",
-      description: "Extracting text from product label...",
+      description: "Analyzing product label with OCR...",
     });
 
     try {
-      const worker = await createWorker('eng');
-      const { data: { text } } = await worker.recognize(file);
-      await worker.terminate();
-
-      console.log('Extracted OCR text:', text);
-
-      // Parse date from extracted text
-      const expiryDate = parseDateFromText(text);
+      // Preprocess image
+      const preprocessed = await preprocessImage(file);
       
-      if (!expiryDate) {
+      // Try OCR with different rotations
+      const rotations = [0, -5, 5, -10, 10];
+      let allText = '';
+      
+      for (const rotation of rotations) {
+        const text = await performOCR(preprocessed, rotation);
+        allText += '\n' + text;
+      }
+
+      console.log('Combined OCR text:', allText);
+
+      // Parse dates from all attempts
+      const dates = parseDateFromText(allText);
+      
+      if (dates.length === 0) {
+        setShowManualEntry(true);
+        setDetectedProductName(extractProductName(allText));
         toast({
-          title: "Date Not Detected",
-          description: "Could not find expiry date in image. Please enter manually or try another photo.",
+          title: "No Date Detected",
+          description: "Please enter the expiry date manually.",
           variant: "destructive",
         });
         setIsProcessing(false);
         return;
       }
 
-      // Extract product name
-      const productName = extractProductName(text);
-
-      // Save to database
-      await saveItemToSupabase(productName, expiryDate);
+      if (dates.length === 1) {
+        // Only one date found, auto-save
+        const productName = extractProductName(allText);
+        await saveItemToSupabase(productName, dates[0]);
+      } else {
+        // Multiple dates found, let user choose
+        setDateCandidates(dates);
+        setDetectedProductName(extractProductName(allText));
+        toast({
+          title: "Multiple Dates Found",
+          description: "Please select the correct expiry date.",
+        });
+      }
+      
       setIsProcessing(false);
     } catch (error) {
       console.error('OCR processing error:', error);
       toast({
         title: "Processing Failed",
-        description: "Failed to extract text from image. Please try again.",
+        description: "Failed to extract text. Please try again or enter manually.",
         variant: "destructive",
       });
+      setShowManualEntry(true);
       setIsProcessing(false);
     }
+  };
+
+  const handleManualDateSubmit = async () => {
+    if (!manualDate) {
+      toast({
+        title: "Date Required",
+        description: "Please enter an expiry date.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const date = new Date(manualDate);
+    const productName = detectedProductName || "Scanned Product";
+    await saveItemToSupabase(productName, date);
+    setShowManualEntry(false);
+    setManualDate('');
+  };
+
+  const handleDateCandidateSelect = async (date: Date) => {
+    await saveItemToSupabase(detectedProductName, date);
+    setDateCandidates([]);
   };
 
   const handleScanSuccess = (barcode: string) => {
@@ -399,40 +556,112 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
 
           {scanMode === 'image' ? (
             <div className="space-y-4">
-              <div className="text-center p-8 border-2 border-dashed rounded-lg border-muted-foreground/25 hover:border-primary/50 transition-colors">
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-12 w-12 mx-auto mb-4 text-primary animate-spin" />
-                    <p className="text-sm text-muted-foreground">Processing image...</p>
-                  </>
-                ) : (
-                  <>
-                    <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Upload a clear photo of the product label.<br />
-                      Make sure expiry date is visible.
-                    </p>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleImageUpload}
-                      className="hidden"
+              {!dateCandidates.length && !showManualEntry ? (
+                <div className="text-center p-8 border-2 border-dashed rounded-lg border-muted-foreground/25 hover:border-primary/50 transition-colors">
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-12 w-12 mx-auto mb-4 text-primary animate-spin" />
+                      <p className="text-sm text-muted-foreground">Analyzing image with OCR...</p>
+                      <p className="text-xs text-muted-foreground mt-2">This may take a few seconds</p>
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Upload a clear photo of the product label.<br />
+                        Make sure the expiry date is visible and well-lit.
+                      </p>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <Button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isProcessing}
+                      >
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                        Take Photo / Upload
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : dateCandidates.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <h3 className="font-semibold text-lg mb-2">Select Expiry Date</h3>
+                    <p className="text-sm text-muted-foreground">Multiple dates detected. Choose the correct one:</p>
+                  </div>
+                  <div className="space-y-2">
+                    {dateCandidates.map((date, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleDateCandidateSelect(date)}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
+                        {date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        <Badge className="ml-auto" variant={calculateStatus(date) === 'expired' ? 'destructive' : calculateStatus(date) === 'use-soon' ? 'default' : 'outline'}>
+                          {calculateStatus(date) === 'expired' ? 'Expired' : calculateStatus(date) === 'use-soon' ? 'Use Soon' : 'Safe'}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setDateCandidates([]);
+                      setShowManualEntry(true);
+                    }}
+                  >
+                    None of these? Enter manually
+                  </Button>
+                </div>
+              ) : showManualEntry ? (
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+                    <h3 className="font-semibold text-lg mb-2">Enter Date Manually</h3>
+                    <p className="text-sm text-muted-foreground">No date detected in the image</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="manual-date">Expiry Date</Label>
+                    <Input
+                      id="manual-date"
+                      type="date"
+                      value={manualDate}
+                      onChange={(e) => setManualDate(e.target.value)}
+                      min={new Date().toISOString().split('T')[0]}
                     />
-                    <Button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isProcessing}
-                    >
-                      <ImageIcon className="h-4 w-4 mr-2" />
-                      Take Photo / Upload
+                  </div>
+                  <div className="flex gap-2">
+                    <Button className="flex-1" onClick={handleManualDateSubmit}>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Add Item
                     </Button>
-                  </>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Supports formats like: EXP 12/03/2025, Best Before 12-03-25, MFG 01/01/2024
-              </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowManualEntry(false);
+                        setManualDate('');
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              
+              {!isProcessing && !dateCandidates.length && !showManualEntry && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Supports: EXP 12/03/2025, Best Before 12-03-25, MFG 01/01/2024, YYYY-MM-DD
+                </p>
+              )}
             </div>
           ) : (
             <>
