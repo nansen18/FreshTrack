@@ -23,6 +23,8 @@ import {
 } from 'lucide-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import GameProgress from '@/components/GameProgress';
+import NutritionSummary from '@/components/NutritionSummary';
+import DailyNutritionSummary from '@/components/DailyNutritionSummary';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, isPast } from 'date-fns';
@@ -34,6 +36,16 @@ interface Item {
   expiry_date: string;
   consumed: boolean;
   created_at: string;
+  barcode?: string;
+  calories?: number;
+  sugar?: number;
+  protein?: number;
+  fat?: number;
+  fiber?: number;
+  carbohydrates?: number;
+  sodium?: number;
+  health_score?: string;
+  ai_feedback?: string;
 }
 
 export default function Dashboard() {
@@ -282,6 +294,11 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Daily Nutrition Summary */}
+        <div className="mb-8">
+          <DailyNutritionSummary items={items} />
+        </div>
+
         {/* Add Item Buttons */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Your Food Items</h2>
@@ -348,7 +365,7 @@ export default function Dashboard() {
                             </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                         <div className="flex items-center gap-6 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-4 w-4" />
                             <span>Expires: {format(new Date(item.expiry_date), 'MMM dd, yyyy')}</span>
@@ -357,6 +374,25 @@ export default function Dashboard() {
                             {daysLeft >= 0 ? `${daysLeft} days left` : `Expired ${Math.abs(daysLeft)} days ago`}
                           </div>
                         </div>
+                        {/* Show Nutrition Summary if available */}
+                        {(item.calories || item.sugar || item.protein || item.fat || item.fiber) && (
+                          <div className="mt-4">
+                            <NutritionSummary 
+                              data={{
+                                calories: item.calories,
+                                sugar: item.sugar,
+                                protein: item.protein,
+                                fat: item.fat,
+                                fiber: item.fiber,
+                                carbohydrates: item.carbohydrates,
+                                sodium: item.sodium,
+                                health_score: item.health_score,
+                                ai_feedback: item.ai_feedback,
+                              }}
+                              itemName={item.name}
+                            />
+                          </div>
+                        )}
                       </div>
                       {!item.consumed && (
                         <div className="flex items-center gap-2">

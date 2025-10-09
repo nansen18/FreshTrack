@@ -19,6 +19,18 @@ interface Product {
   estimatedShelfLife: number; // days
 }
 
+interface NutritionData {
+  calories?: number;
+  sugar?: number;
+  protein?: number;
+  fat?: number;
+  fiber?: number;
+  carbohydrates?: number;
+  sodium?: number;
+  health_score?: string;
+  ai_feedback?: string;
+}
+
 interface BarcodeScannerProps {
   onScanSuccess: (productData: Product & { barcode: string }) => void;
   onClose: () => void;
@@ -75,9 +87,14 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualDate, setManualDate] = useState('');
   const [detectedProductName, setDetectedProductName] = useState('');
+  const [nutritionData, setNutritionData] = useState<NutritionData | null>(null);
+  const [loadingNutrition, setLoadingNutrition] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  
+  // Cache for nutrition data
+  const nutritionCache = useRef<Map<string, NutritionData>>(new Map());
 
   useEffect(() => {
     if (scanMode === 'barcode') {
@@ -263,7 +280,69 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
     return lines[0] || "Scanned Product";
   };
 
-  const saveItemToSupabase = async (name: string, expiryDate: Date) => {
+  const fetchNutritionData = async (barcode: string, productName?: string): Promise<NutritionData | null> => {
+    // Check cache first
+    if (nutritionCache.current.has(barcode)) {
+      return nutritionCache.current.get(barcode)!;
+    }
+
+    try {
+      setLoadingNutrition(true);
+      const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+      const data = await response.json();
+
+      if (data.status === 1 && data.product) {
+        const product = data.product;
+        const nutriments = product.nutriments || {};
+
+        // Calculate health score
+        const sugar = nutriments['sugars_100g'] || 0;
+        const sodium = nutriments['sodium_100g'] ? nutriments['sodium_100g'] * 1000 : 0; // Convert to mg
+        const fat = nutriments['fat_100g'] || 0;
+        
+        let health_score = 'good';
+        let ai_feedback = 'Balanced nutrition profile.';
+        
+        if (sugar > 15 || sodium > 500 || fat > 20) {
+          health_score = 'high-risk';
+          if (sugar > 15) ai_feedback = 'High sugar – consume moderately!';
+          else if (sodium > 500) ai_feedback = 'High sodium – watch your salt intake!';
+          else ai_feedback = 'High fat content – enjoy in moderation!';
+        } else if (sugar > 10 || sodium > 300 || fat > 15) {
+          health_score = 'moderate';
+          ai_feedback = 'Moderate nutritional profile – balanced diet recommended.';
+        } else if ((nutriments['proteins_100g'] || 0) > 10 && (nutriments['fiber_100g'] || 0) > 5) {
+          ai_feedback = 'Great source of protein and fiber! 🌟';
+        }
+
+        const nutritionData: NutritionData = {
+          calories: nutriments['energy-kcal_100g'] || nutriments['energy-kcal'],
+          sugar: sugar,
+          protein: nutriments['proteins_100g'] || nutriments['proteins'],
+          fat: fat,
+          fiber: nutriments['fiber_100g'] || nutriments['fiber'],
+          carbohydrates: nutriments['carbohydrates_100g'] || nutriments['carbohydrates'],
+          sodium: sodium,
+          health_score,
+          ai_feedback,
+        };
+
+        // Cache the result
+        nutritionCache.current.set(barcode, nutritionData);
+        setNutritionData(nutritionData);
+        return nutritionData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching nutrition data:', error);
+      return null;
+    } finally {
+      setLoadingNutrition(false);
+    }
+  };
+
+  const saveItemToSupabase = async (name: string, expiryDate: Date, barcode?: string, nutrition?: NutritionData | null) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -287,6 +366,16 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
           purchase_date: purchaseDate,
           expiry_date: expiryDateStr,
           consumed: false,
+          barcode: barcode || null,
+          calories: nutrition?.calories || null,
+          sugar: nutrition?.sugar || null,
+          protein: nutrition?.protein || null,
+          fat: nutrition?.fat || null,
+          fiber: nutrition?.fiber || null,
+          carbohydrates: nutrition?.carbohydrates || null,
+          sodium: nutrition?.sodium || null,
+          health_score: nutrition?.health_score || null,
+          ai_feedback: nutrition?.ai_feedback || null,
         });
 
       if (error) throw error;
@@ -391,7 +480,7 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
       if (dates.length === 1) {
         // Only one date found, auto-save
         const productName = extractProductName(allText);
-        await saveItemToSupabase(productName, dates[0]);
+        await saveItemToSupabase(productName, dates[0], undefined, null);
       } else {
         // Multiple dates found, let user choose
         setDateCandidates(dates);
@@ -427,19 +516,22 @@ export default function BarcodeScanner({ onScanSuccess, onClose }: BarcodeScanne
     
     const date = new Date(manualDate);
     const productName = detectedProductName || "Scanned Product";
-    await saveItemToSupabase(productName, date);
+    await saveItemToSupabase(productName, date, undefined, null);
     setShowManualEntry(false);
     setManualDate('');
   };
 
   const handleDateCandidateSelect = async (date: Date) => {
-    await saveItemToSupabase(detectedProductName, date);
+    await saveItemToSupabase(detectedProductName, date, undefined, nutritionData);
     setDateCandidates([]);
   };
 
-  const handleScanSuccess = (barcode: string) => {
+  const handleScanSuccess = async (barcode: string) => {
     setScanResult(barcode);
     stopScanner();
+    
+    // Fetch nutrition data from OpenFoodFacts
+    const nutrition = await fetchNutritionData(barcode);
     
     // Look up product in mock database
     const product = mockProductDatabase[barcode];

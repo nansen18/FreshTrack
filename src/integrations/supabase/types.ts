@@ -16,30 +16,66 @@ export type Database = {
     Tables: {
       items: {
         Row: {
+          ai_feedback: string | null
+          barcode: string | null
+          calories: number | null
+          carbohydrates: number | null
           consumed: boolean | null
           created_at: string | null
           expiry_date: string
+          fat: number | null
+          fiber: number | null
+          health_score: string | null
           id: string
           name: string
+          nutrition_data: Json | null
+          nutrition_score: string | null
+          protein: number | null
           purchase_date: string | null
+          sodium: number | null
+          sugar: number | null
           user_id: string
         }
         Insert: {
+          ai_feedback?: string | null
+          barcode?: string | null
+          calories?: number | null
+          carbohydrates?: number | null
           consumed?: boolean | null
           created_at?: string | null
           expiry_date: string
+          fat?: number | null
+          fiber?: number | null
+          health_score?: string | null
           id?: string
           name: string
+          nutrition_data?: Json | null
+          nutrition_score?: string | null
+          protein?: number | null
           purchase_date?: string | null
+          sodium?: number | null
+          sugar?: number | null
           user_id: string
         }
         Update: {
+          ai_feedback?: string | null
+          barcode?: string | null
+          calories?: number | null
+          carbohydrates?: number | null
           consumed?: boolean | null
           created_at?: string | null
           expiry_date?: string
+          fat?: number | null
+          fiber?: number | null
+          health_score?: string | null
           id?: string
           name?: string
+          nutrition_data?: Json | null
+          nutrition_score?: string | null
+          protein?: number | null
           purchase_date?: string | null
+          sodium?: number | null
+          sugar?: number | null
           user_id?: string
         }
         Relationships: []
