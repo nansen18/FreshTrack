@@ -1,73 +1,102 @@
-# Welcome to your Lovable project
+# 🧠 FreshTrack+
+### *Smart Food Expiry & Nutrition Tracker – Eat Smart, Waste Less.*
 
-## Project info
+> A responsive AI-powered web app that tracks food expiry dates, provides nutrition insights, and reduces food waste — built for impact, innovation, and a hackathon-winning experience. 🌱✨
 
-**URL**: https://lovable.dev/projects/88a97f1d-5623-4391-9329-adb2e7465c42
+---
 
-## How can I edit this code?
+## 🚀 Overview
 
-There are several ways of editing your application.
+**FreshTrack+** is a next-gen web app designed to make food management smarter.  
+It combines expiry tracking, barcode/OCR scanning, and nutrition analysis to help users save money, reduce waste, and live healthier.  
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/88a97f1d-5623-4391-9329-adb2e7465c42) and start prompting.
+## 🧩 Features
 
-Changes made via Lovable will be committed automatically to this repo.
+### 👥 Dual Dashboards
+- **Consumer Dashboard:** Track expiry, view nutrition summaries, and get health alerts.  
+- **Retailer Dashboard:** Manage stock, apply dynamic discounts for near-expiry items, and view product analytics.
 
-**Use your preferred IDE**
+### 📸 Smart Scanning
+- Scan **barcodes** or **labels** using OCR to detect product name & expiry date.  
+- Automatically logs item into database with expiry and nutrition data.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 🍏 Nutrition Analyzer
+- Fetches nutritional info via **OpenFoodFacts API** (calories, sugar, fat, protein, fiber, etc.).  
+- Displays a **Nutrition Summary Card** with:
+  - Health score indicator (🟢 Good / 🟡 Moderate / 🔴 High Risk)  
+  - AI-generated advice (“Low sugar – healthy choice!”)
+- Aggregates daily nutrition summaries across all items.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### ⏰ Expiry Alerts
+- ⚠️ 3 days before expiry → “Use Soon”  
+- ❌ On expiry → “Expired – dispose safely”  
+- ✅ Option to mark as *Consumed* or *Wasted*  
 
-Follow these steps:
+### 🌍 Community & Gamification
+- **Share Food Hub:** donate near-expiry items locally.  
+- **Achievements:** badges like *Waste Warrior* 🥇 and *Healthy Eater* 💪.
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 🕶️ Dark Mode + Responsiveness
+- Fully responsive for mobile & desktop.  
+- Dark mode with color adjustments for clear visibility.  
+- Smooth transitions and lazy loading for faster page loads.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+---
 
-# Step 3: Install the necessary dependencies.
-npm i
+## ⚙️ Tech Stack
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+| Layer | Technology |
+|-------|-------------|
+| **Frontend** | Next.js / React + Tailwind CSS |
+| **Backend** | Supabase (Auth + Database) |
+| **APIs** | OpenFoodFacts, Tesseract.js (OCR), Barcode Scanning |
+| **Libraries** | React Query / SWR, Chart.js / Recharts |
+| **Hosting** | Vercel / Netlify |
+| **Database** | PostgreSQL (via Supabase) |
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## 🗄️ Database Schema
 
-**Use GitHub Codespaces**
+### **profiles**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID (PK) | Linked to user |
+| email | Text | User email |
+| role | Text | `consumer` / `retailer` |
+| created_at | Timestamp | Creation date |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### **items**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID (PK) | Item ID |
+| user_id | UUID | Linked to consumer |
+| name | Text | Product name |
+| purchase_date | Date | Purchase date |
+| expiry_date | Date | Expiry date |
+| nutrition_data | JSON | Calories, fat, sugar, etc. |
+| consumed | Boolean | Item used or not |
 
-## What technologies are used for this project?
+### **retailer_products**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID (PK) | Product ID |
+| retailer_id | UUID | Linked to retailer |
+| name | Text | Product name |
+| expiry_date | Date | Expiry date |
+| discount | Numeric | Discount value |
+| created_at | Timestamp | Added date |
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🔐 Environment Variables
 
-## How can I deploy this project?
+Add these to `.env.local` or Vercel project settings:
 
-Simply open [Lovable](https://lovable.dev/projects/88a97f1d-5623-4391-9329-adb2e7465c42) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+```bash
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+NEXT_PUBLIC_OPENFOODFACTS_API=https://world.openfoodfacts.org/api/v0/product/
