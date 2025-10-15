@@ -109,9 +109,16 @@ Respond ONLY with a valid JSON object in this exact format:
       throw new Error('Invalid AI response format');
     }
 
-    // Validate the response structure
-    if (!result.freshness_level || !result.freshness_score || !result.description) {
+    // Validate the response structure (check for undefined/null, not falsy values)
+    if (!result.freshness_level || result.freshness_score === undefined || result.freshness_score === null || !result.description) {
+      console.error('Incomplete AI response - missing required fields:', result);
       throw new Error('Incomplete AI response');
+    }
+
+    // Ensure freshness_score is within valid range
+    if (result.freshness_score < 0 || result.freshness_score > 100) {
+      console.error('Invalid freshness_score:', result.freshness_score);
+      result.freshness_score = Math.max(0, Math.min(100, result.freshness_score));
     }
 
     console.log('Freshness analysis complete:', result);
@@ -122,8 +129,16 @@ Respond ONLY with a valid JSON object in this exact format:
     );
   } catch (error: any) {
     console.error('Error in analyze-freshness function:', error);
+    
+    // Return user-friendly error message
+    const errorMessage = error.message?.includes('AI API error') 
+      ? 'AI service temporarily unavailable. Please try again.'
+      : error.message?.includes('Invalid AI response') 
+      ? "Couldn't detect freshness. Try another image."
+      : error.message || 'An unexpected error occurred';
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

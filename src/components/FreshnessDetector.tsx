@@ -49,7 +49,7 @@ export default function FreshnessDetector() {
 
       if (error) {
         console.error('Edge function error:', error);
-        throw error;
+        throw new Error(data?.error || error.message || "Couldn't detect freshness. Try another image.");
       }
 
       if (!data) {
