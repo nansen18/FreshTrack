@@ -19,12 +19,14 @@ import {
   Moon,
   Sun,
   Scan,
-  XCircle
+  XCircle,
+  Search
 } from 'lucide-react';
 import BarcodeScanner from '@/components/BarcodeScanner';
 import GameProgress from '@/components/GameProgress';
 import NutritionSummary from '@/components/NutritionSummary';
 import DailyNutritionSummary from '@/components/DailyNutritionSummary';
+import FreshnessDetector from '@/components/FreshnessDetector';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, isPast } from 'date-fns';
@@ -52,6 +54,7 @@ export default function Dashboard() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [showScanner, setShowScanner] = useState(false);
+  const [showFreshnessDetector, setShowFreshnessDetector] = useState(false);
   
   const { user, profile, signOut } = useAuth();
   const { theme, setTheme, isDark } = useDarkMode();
@@ -299,15 +302,30 @@ export default function Dashboard() {
           <DailyNutritionSummary items={items} />
         </div>
 
+        {/* Freshness Detector */}
+        {showFreshnessDetector && (
+          <div className="mb-8">
+            <FreshnessDetector />
+          </div>
+        )}
+
         {/* Add Item Buttons */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold">Your Food Items</h2>
-          <div className="flex gap-4">
-            <Button onClick={() => setShowScanner(true)}>
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              onClick={() => setShowFreshnessDetector(!showFreshnessDetector)}
+              variant={showFreshnessDetector ? "default" : "outline"}
+              size="sm"
+            >
+              <Search className="h-4 w-4 mr-2" />
+              Check Freshness
+            </Button>
+            <Button onClick={() => setShowScanner(true)} size="sm">
               <Scan className="h-4 w-4 mr-2" />
               Scan Barcode
             </Button>
-            <Button variant="outline" onClick={() => navigate('/add-item')}>
+            <Button variant="outline" onClick={() => navigate('/add-item')} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Add Manually
             </Button>

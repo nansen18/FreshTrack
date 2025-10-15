@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      freshness_checks: {
+        Row: {
+          ai_description: string
+          created_at: string
+          freshness_level: string
+          freshness_score: number
+          id: string
+          image_url: string
+          product_name: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_description: string
+          created_at?: string
+          freshness_level: string
+          freshness_score: number
+          id?: string
+          image_url: string
+          product_name?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_description?: string
+          created_at?: string
+          freshness_level?: string
+          freshness_score?: number
+          id?: string
+          image_url?: string
+          product_name?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       items: {
         Row: {
           ai_feedback: string | null

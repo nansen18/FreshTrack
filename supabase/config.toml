@@ -1,1 +1,4 @@
 project_id = "jtqfkhhcovnwnantrcjk"
+
+[functions.analyze-freshness]
+verify_jwt = true
