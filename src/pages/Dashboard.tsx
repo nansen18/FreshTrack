@@ -27,6 +27,7 @@ import GameProgress from '@/components/GameProgress';
 import NutritionSummary from '@/components/NutritionSummary';
 import DailyNutritionSummary from '@/components/DailyNutritionSummary';
 import FreshnessDetector from '@/components/FreshnessDetector';
+import DiscountedOffers from '@/components/DiscountedOffers';
 import { useDarkMode } from '@/hooks/useDarkMode';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, isPast } from 'date-fns';
@@ -300,6 +301,11 @@ export default function Dashboard() {
         {/* Daily Nutrition Summary */}
         <div className="mb-8">
           <DailyNutritionSummary items={items} />
+        </div>
+
+        {/* Discounted Offers */}
+        <div className="mb-8">
+          <DiscountedOffers />
         </div>
 
         {/* Freshness Detector */}

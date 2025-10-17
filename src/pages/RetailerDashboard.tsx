@@ -47,6 +47,7 @@ export default function RetailerDashboard() {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [hasRetailerRole, setHasRetailerRole] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -54,13 +55,50 @@ export default function RetailerDashboard() {
       return;
     }
     
-    if (profile && profile.role !== 'retailer') {
-      navigate('/dashboard');
-      return;
-    }
+    checkRetailerRole();
+  }, [user, navigate]);
 
-    fetchProducts();
-  }, [user, profile, navigate]);
+  useEffect(() => {
+    if (hasRetailerRole) {
+      fetchProducts();
+      // Auto-apply discounts to expiring products
+      applyAutoDiscounts();
+    }
+  }, [hasRetailerRole]);
+
+  const checkRetailerRole = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'retailer')
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (!data) {
+        toast({
+          title: "Access Denied",
+          description: "You need a retailer account to access this dashboard.",
+          variant: "destructive"
+        });
+        navigate('/dashboard');
+        return;
+      }
+      
+      setHasRetailerRole(true);
+    } catch (error: any) {
+      toast({
+        title: "Error checking permissions",
+        description: error.message,
+        variant: "destructive"
+      });
+      navigate('/dashboard');
+    }
+  };
 
   const fetchProducts = async () => {
     if (!user) return;
@@ -115,6 +153,55 @@ export default function RetailerDashboard() {
         description: error.message,
         variant: "destructive"
       });
+    }
+  };
+
+  const applyAutoDiscounts = async () => {
+    if (!user) return;
+    
+    try {
+      // Get products expiring in the next 5 days without discounts
+      const { data: expiringProducts, error: fetchError } = await supabase
+        .from('retailer_products')
+        .select('*')
+        .eq('retailer_id', user.id)
+        .eq('discounted', false);
+
+      if (fetchError) throw fetchError;
+
+      const productsNeedingDiscount = expiringProducts?.filter(product => {
+        const daysUntilExpiry = differenceInDays(new Date(product.expiry_date), new Date());
+        return daysUntilExpiry <= 5 && daysUntilExpiry >= 0;
+      }) || [];
+
+      // Auto-apply graduated discounts based on expiry
+      for (const product of productsNeedingDiscount) {
+        const daysLeft = differenceInDays(new Date(product.expiry_date), new Date());
+        let autoDiscount = 0;
+        
+        if (daysLeft <= 1) autoDiscount = 50;
+        else if (daysLeft <= 2) autoDiscount = 30;
+        else if (daysLeft <= 5) autoDiscount = 15;
+
+        if (autoDiscount > 0) {
+          await supabase
+            .from('retailer_products')
+            .update({ 
+              discount: autoDiscount,
+              discounted: true 
+            })
+            .eq('id', product.id);
+        }
+      }
+
+      if (productsNeedingDiscount.length > 0) {
+        toast({
+          title: "Auto-discounts applied",
+          description: `${productsNeedingDiscount.length} products automatically discounted based on expiry dates.`
+        });
+      }
+    } catch (error: any) {
+      console.error('Error applying auto-discounts:', error);
     }
   };
 
