@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, isAfter, isBefore, addDays } from 'date-fns';
+import RetailerAnalytics from '@/components/RetailerAnalytics';
 
 interface RetailerProduct {
   id: string;
@@ -295,6 +296,13 @@ export default function RetailerDashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Analytics Section */}
+        <div className="mb-8">
+          <RetailerAnalytics />
+        </div>
+
+        <Separator className="my-8" />
+
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>

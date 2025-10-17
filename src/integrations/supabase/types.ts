@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      claimed_offers: {
+        Row: {
+          claimed_at: string | null
+          consumer_id: string
+          created_at: string | null
+          discount: number
+          id: string
+          offer_id: string
+          product_name: string
+          retailer_id: string
+        }
+        Insert: {
+          claimed_at?: string | null
+          consumer_id: string
+          created_at?: string | null
+          discount: number
+          id?: string
+          offer_id: string
+          product_name: string
+          retailer_id: string
+        }
+        Update: {
+          claimed_at?: string | null
+          consumer_id?: string
+          created_at?: string | null
+          discount?: number
+          id?: string
+          offer_id?: string
+          product_name?: string
+          retailer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claimed_offers_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "retailer_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       freshness_checks: {
         Row: {
           ai_description: string

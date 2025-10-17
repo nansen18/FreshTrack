@@ -43,11 +43,42 @@ export default function DiscountedOffers() {
     }
   };
 
-  const claimOffer = (offerName: string, discount: number) => {
-    toast({
-      title: "Offer Claimed! 🎉",
-      description: `You claimed ${discount}% off on ${offerName}. Visit the store to redeem.`
-    });
+  const claimOffer = async (offerId: string, offerName: string, discount: number, retailerId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Authentication required",
+          description: "Please sign in to claim offers.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('claimed_offers')
+        .insert({
+          offer_id: offerId,
+          consumer_id: user.id,
+          retailer_id: retailerId,
+          product_name: offerName,
+          discount: discount
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Offer Claimed! 🎉",
+        description: `You claimed ${discount}% off on ${offerName}. Visit the store to redeem.`
+      });
+    } catch (error: any) {
+      console.error('Error claiming offer:', error);
+      toast({
+        title: "Failed to claim offer",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   if (loading) {
@@ -117,7 +148,7 @@ export default function DiscountedOffers() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => claimOffer(offer.name, offer.discount)}
+                  onClick={() => claimOffer(offer.id, offer.name, offer.discount, offer.retailer_id)}
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <TrendingDown className="h-4 w-4 mr-1" />
