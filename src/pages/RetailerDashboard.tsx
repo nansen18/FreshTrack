@@ -298,7 +298,7 @@ export default function RetailerDashboard() {
       <div className="container mx-auto px-4 py-8">
         {/* Analytics Section */}
         <div className="mb-8">
-          <RetailerAnalytics />
+          <RetailerAnalytics retailerId={user?.id} />
         </div>
 
         <Separator className="my-8" />

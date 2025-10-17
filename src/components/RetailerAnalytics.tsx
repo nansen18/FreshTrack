@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { TrendingUp, TrendingDown, DollarSign, Package, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Package, BarChart3, ShoppingCart } from 'lucide-react';
 import { format, subDays } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 interface AnalyticsData {
   totalClaims: number;
@@ -12,7 +13,18 @@ interface AnalyticsData {
   claimsThisWeek: number;
 }
 
-export default function RetailerAnalytics() {
+interface ClaimedOffer {
+  id: string;
+  product_name: string;
+  discount: number;
+  claimed_at: string;
+}
+
+interface RetailerAnalyticsProps {
+  retailerId?: string;
+}
+
+export default function RetailerAnalytics({ retailerId }: RetailerAnalyticsProps = {}) {
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalClaims: 0,
     wasteReduction: 0,
@@ -20,6 +32,7 @@ export default function RetailerAnalytics() {
     activeCampaigns: 0,
     claimsThisWeek: 0
   });
+  const [recentClaims, setRecentClaims] = useState<ClaimedOffer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,13 +42,17 @@ export default function RetailerAnalytics() {
   const fetchAnalytics = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user && !retailerId) return;
+      
+      const activeRetailerId = retailerId || user?.id;
+      if (!activeRetailerId) return;
 
       // Get all claimed offers for this retailer
       const { data: claims, error: claimsError } = await supabase
         .from('claimed_offers')
         .select('*')
-        .eq('retailer_id', user.id);
+        .eq('retailer_id', activeRetailerId)
+        .order('claimed_at', { ascending: false });
 
       if (claimsError) throw claimsError;
 
@@ -43,7 +60,7 @@ export default function RetailerAnalytics() {
       const { data: activeProducts, error: productsError } = await supabase
         .from('retailer_products')
         .select('*')
-        .eq('retailer_id', user.id)
+        .eq('retailer_id', activeRetailerId)
         .eq('discounted', true);
 
       if (productsError) throw productsError;
@@ -67,6 +84,9 @@ export default function RetailerAnalytics() {
         activeCampaigns: activeProducts?.length || 0,
         claimsThisWeek
       });
+      
+      // Store recent claims for display
+      setRecentClaims(claims?.slice(0, 5) || []);
     } catch (error: any) {
       console.error('Error fetching analytics:', error);
     } finally {
@@ -151,6 +171,40 @@ export default function RetailerAnalytics() {
           </CardContent>
         </Card>
       </div>
+
+      {recentClaims.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShoppingCart className="h-5 w-5 text-primary" />
+              Recent Claims
+            </CardTitle>
+            <CardDescription>
+              Latest offers claimed by customers
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentClaims.map((claim) => (
+                <div
+                  key={claim.id}
+                  className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                >
+                  <div>
+                    <p className="font-medium">{claim.product_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(claim.claimed_at), 'MMM dd, yyyy')}
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="bg-green-500 text-white">
+                    {claim.discount}% OFF
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
