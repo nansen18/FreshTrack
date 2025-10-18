@@ -182,15 +182,15 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       {/* Consumer Navigation */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+      <header className="border-b bg-card sticky top-0 z-50">
+        <div className="w-full px-4 lg:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Leaf className="h-6 w-6 text-primary" />
               <h1 className="text-xl font-bold">FreshTrack</h1>
               <Badge variant="outline" className="ml-2 text-xs">Consumer</Badge>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 lg:gap-4">
               <span className="text-sm text-muted-foreground hidden md:block">
                 Welcome back!
               </span>
@@ -201,56 +201,56 @@ export default function Dashboard() {
               >
                 {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Button variant="outline" onClick={() => navigate('/reports')}>
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Reports
+              <Button variant="outline" size="sm" onClick={() => navigate('/reports')}>
+                <BarChart3 className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Reports</span>
               </Button>
-              <Button variant="outline" onClick={signOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+              <Button variant="outline" size="sm" onClick={signOut}>
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sign Out</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 lg:px-6 py-6 lg:py-8">
         {/* Game Progress & Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+          <div className="xl:col-span-3 space-y-4 lg:space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <Package className="h-8 w-8 text-primary" />
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center gap-3 lg:gap-4">
+                    <Package className="h-7 w-7 lg:h-8 lg:w-8 text-primary flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Items</p>
-                      <p className="text-2xl font-bold">{stats.total}</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Total Items</p>
+                      <p className="text-xl lg:text-2xl font-bold">{stats.total}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <CheckCircle className="h-8 w-8 text-green-500" />
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center gap-3 lg:gap-4">
+                    <CheckCircle className="h-7 w-7 lg:h-8 lg:w-8 text-green-500 flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Consumed</p>
-                      <p className="text-2xl font-bold">{stats.consumed}</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Consumed</p>
+                      <p className="text-xl lg:text-2xl font-bold">{stats.consumed}</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <AlertTriangle className="h-8 w-8 text-orange-500" />
+                <CardContent className="p-4 lg:p-6">
+                  <div className="flex items-center gap-3 lg:gap-4">
+                    <AlertTriangle className="h-7 w-7 lg:h-8 lg:w-8 text-orange-500 flex-shrink-0" />
                     <div>
-                      <p className="text-sm text-muted-foreground">Expiring Soon</p>
-                      <p className="text-2xl font-bold">{stats.expiring}</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">Expiring Soon</p>
+                      <p className="text-xl lg:text-2xl font-bold">{stats.expiring}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -259,10 +259,10 @@ export default function Dashboard() {
             
             {/* Expiry Alerts */}
             {expiringItems.length > 0 && (
-              <Card className="mb-6 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-200">
-                    <AlertTriangle className="h-5 w-5" />
+              <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-200 text-base lg:text-lg">
+                    <AlertTriangle className="h-4 w-4 lg:h-5 lg:w-5" />
                     Food Expiry Alerts
                   </CardTitle>
                 </CardHeader>
@@ -288,7 +288,7 @@ export default function Dashboard() {
             )}
           </div>
           
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1">
             <GameProgress 
               totalItems={stats.total}
               consumedItems={stats.consumed}
@@ -299,25 +299,25 @@ export default function Dashboard() {
         </div>
 
         {/* Daily Nutrition Summary */}
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-8">
           <DailyNutritionSummary items={items} />
         </div>
 
         {/* Discounted Offers */}
-        <div className="mb-8">
+        <div className="mb-6 lg:mb-8">
           <DiscountedOffers />
         </div>
 
         {/* Freshness Detector */}
         {showFreshnessDetector && (
-          <div className="mb-8">
+          <div className="mb-6 lg:mb-8">
             <FreshnessDetector />
           </div>
         )}
 
         {/* Add Item Buttons */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Your Food Items</h2>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 lg:mb-6">
+          <h2 className="text-lg lg:text-xl font-semibold">Your Food Items</h2>
           <div className="flex flex-wrap gap-2">
             <Button 
               onClick={() => setShowFreshnessDetector(!showFreshnessDetector)}
@@ -325,35 +325,38 @@ export default function Dashboard() {
               size="sm"
             >
               <Search className="h-4 w-4 mr-2" />
-              Check Freshness
+              <span className="hidden sm:inline">Check Freshness</span>
+              <span className="sm:hidden">Freshness</span>
             </Button>
             <Button onClick={() => setShowScanner(true)} size="sm">
               <Scan className="h-4 w-4 mr-2" />
-              Scan Barcode
+              <span className="hidden sm:inline">Scan Barcode</span>
+              <span className="sm:hidden">Scan</span>
             </Button>
             <Button variant="outline" onClick={() => navigate('/add-item')} size="sm">
               <Plus className="h-4 w-4 mr-2" />
-              Add Manually
+              <span className="hidden sm:inline">Add Manually</span>
+              <span className="sm:hidden">Add</span>
             </Button>
           </div>
         </div>
 
         {/* Items Grid */}
-        <div className="grid gap-4">
+        <div className="grid gap-3 lg:gap-4">
           {items.length === 0 ? (
             <Card>
-              <CardContent className="p-8 text-center">
-                <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <CardContent className="p-6 lg:p-8 text-center">
+                <Package className="h-10 w-10 lg:h-12 lg:w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-semibold mb-2">No items yet</h3>
-                <p className="text-muted-foreground mb-4">
+                <p className="text-sm lg:text-base text-muted-foreground mb-4">
                   Start tracking your food to reduce waste and save money!
                 </p>
-                <div className="flex gap-2 justify-center">
-                  <Button onClick={() => setShowScanner(true)}>
+                <div className="flex gap-2 justify-center flex-wrap">
+                  <Button onClick={() => setShowScanner(true)} size="sm">
                     <Scan className="h-4 w-4 mr-2" />
                     Scan Barcode
                   </Button>
-                  <Button variant="outline" onClick={() => navigate('/add-item')}>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/add-item')}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Manually
                   </Button>
@@ -367,8 +370,8 @@ export default function Dashboard() {
               
               return (
                 <Card key={item.id} className={`hover:shadow-md transition-shadow ${item.consumed ? 'opacity-60' : ''}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
+                  <CardContent className="p-4 lg:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <h3 className="font-semibold">{item.name}</h3>
