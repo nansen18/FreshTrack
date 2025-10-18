@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64 } = await req.json();
+    const { imageBase64, temperature = 22, storageType = 'room_temp' } = await req.json();
     
     if (!imageBase64) {
       return new Response(
@@ -39,11 +39,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a food freshness detection expert. Analyze the provided image of fruits or vegetables and determine:
+            content: `You are a food freshness detection expert with predictive shelf-life capabilities. Analyze the provided image of fruits or vegetables and determine:
+
 1. Freshness level: "fresh", "aging", or "spoiled"
 2. Freshness score: A percentage from 0-100 (100 = perfectly fresh, 0 = completely spoiled)
 3. Product name: What fruit/vegetable is shown
 4. Description: A brief, helpful description (1-2 sentences) about the freshness state
+5. Shelf life days: Estimated days until spoilage based on current condition, storage temperature (${temperature}°C), and storage type (${storageType})
+6. Storage recommendation: Best practice storage advice for maximum shelf life
 
 Consider factors like:
 - Color vibrancy and uniformity
@@ -51,13 +54,29 @@ Consider factors like:
 - Visible spots, bruises, or mold
 - Firmness appearance
 - Overall visual appeal
+- Current storage temperature: ${temperature}°C
+- Storage type: ${storageType}
+
+Temperature impact on shelf life:
+- Refrigerated (2-8°C): Extends shelf life significantly
+- Room temp (18-25°C): Normal decay rate
+- Warmer (>25°C): Accelerates spoilage
+- Freezer (<0°C): Preserves for extended periods
+
+Storage type considerations:
+- "refrigerated": Items stored in fridge, slower decay
+- "room_temp": Counter/table storage, moderate decay
+- "pantry": Cool, dark storage, good for certain items
+- "freezer": Long-term preservation
 
 Respond ONLY with a valid JSON object in this exact format:
 {
   "freshness_level": "fresh" | "aging" | "spoiled",
   "freshness_score": number (0-100),
   "product_name": "string",
-  "description": "string"
+  "description": "string",
+  "shelf_life_days": number (realistic estimate 0-30 days),
+  "storage_recommendation": "string (brief storage tip)"
 }`
           },
           {
@@ -110,7 +129,7 @@ Respond ONLY with a valid JSON object in this exact format:
     }
 
     // Validate the response structure (check for undefined/null, not falsy values)
-    if (!result.freshness_level || result.freshness_score === undefined || result.freshness_score === null || !result.description) {
+    if (!result.freshness_level || result.freshness_score === undefined || result.freshness_score === null || !result.description || result.shelf_life_days === undefined || !result.storage_recommendation) {
       console.error('Incomplete AI response - missing required fields:', result);
       throw new Error('Incomplete AI response');
     }
@@ -119,6 +138,12 @@ Respond ONLY with a valid JSON object in this exact format:
     if (result.freshness_score < 0 || result.freshness_score > 100) {
       console.error('Invalid freshness_score:', result.freshness_score);
       result.freshness_score = Math.max(0, Math.min(100, result.freshness_score));
+    }
+
+    // Ensure shelf_life_days is within reasonable range
+    if (result.shelf_life_days < 0 || result.shelf_life_days > 30) {
+      console.error('Invalid shelf_life_days:', result.shelf_life_days);
+      result.shelf_life_days = Math.max(0, Math.min(30, result.shelf_life_days));
     }
 
     console.log('Freshness analysis complete:', result);

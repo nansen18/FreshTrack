@@ -12,12 +12,16 @@ interface FreshnessResult {
   freshness_score: number;
   product_name: string;
   description: string;
+  shelf_life_days: number;
+  storage_recommendation: string;
 }
 
 export default function FreshnessDetector() {
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<FreshnessResult | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [temperature, setTemperature] = useState<number>(22);
+  const [storageType, setStorageType] = useState<string>('room_temp');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -44,7 +48,11 @@ export default function FreshnessDetector() {
       console.log('Calling analyze-freshness edge function...');
       
       const { data, error } = await supabase.functions.invoke('analyze-freshness', {
-        body: { imageBase64: base64 }
+        body: { 
+          imageBase64: base64,
+          temperature,
+          storageType
+        }
       });
 
       if (error) {
@@ -80,7 +88,7 @@ export default function FreshnessDetector() {
 
       toast({
         title: "Analysis Complete",
-        description: `${data.product_name}: ${Math.round(data.freshness_score)}% fresh`
+        description: `${data.product_name}: ${Math.round(data.freshness_score)}% fresh – ${data.shelf_life_days} days left`
       });
     } catch (error: any) {
       console.error('Error analyzing freshness:', error);
@@ -173,6 +181,18 @@ export default function FreshnessDetector() {
     }
   };
 
+  const getShelfLifeColor = (days: number) => {
+    if (days >= 5) return 'text-green-600 dark:text-green-400';
+    if (days >= 2) return 'text-orange-600 dark:text-orange-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+
+  const getShelfLifeEmoji = (days: number) => {
+    if (days >= 5) return '🟢';
+    if (days >= 2) return '🟡';
+    return '🔴';
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
@@ -185,31 +205,63 @@ export default function FreshnessDetector() {
       </CardHeader>
       <CardContent className="space-y-4">
         {!analyzing && !result && (
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Button 
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1"
-              variant="outline"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Image
-            </Button>
-            <Button 
-              onClick={handleCameraCapture}
-              className="flex-1"
-              variant="outline"
-            >
-              <Camera className="h-4 w-4 mr-2" />
-              Take Photo
-            </Button>
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Storage Temperature (°C)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min="0"
+                    max="30"
+                    value={temperature}
+                    onChange={(e) => setTemperature(Number(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-semibold min-w-[3rem] text-right">{temperature}°C</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Storage Location</label>
+                <select
+                  value={storageType}
+                  onChange={(e) => setStorageType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background"
+                >
+                  <option value="refrigerated">Refrigerated (2-8°C)</option>
+                  <option value="room_temp">Room Temperature</option>
+                  <option value="pantry">Pantry/Cool Storage</option>
+                  <option value="freezer">Freezer</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              <Button 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1"
+                variant="outline"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Image
+              </Button>
+              <Button 
+                onClick={handleCameraCapture}
+                className="flex-1"
+                variant="outline"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Take Photo
+              </Button>
+            </div>
+          </>
         )}
 
         {analyzing && (
@@ -249,6 +301,35 @@ export default function FreshnessDetector() {
               </div>
 
               <Progress value={result.freshness_score} className="h-2" />
+
+              {/* Shelf Life Timeline */}
+              <div className={`p-4 rounded-lg border-2 ${
+                result.shelf_life_days >= 5 
+                  ? 'bg-green-50 dark:bg-green-950/30 border-green-500' 
+                  : result.shelf_life_days >= 2 
+                  ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-500'
+                  : 'bg-red-50 dark:bg-red-950/30 border-red-500'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-3xl">{getShelfLifeEmoji(result.shelf_life_days)}</span>
+                    <div>
+                      <div className={`text-2xl font-bold ${getShelfLifeColor(result.shelf_life_days)}`}>
+                        {result.shelf_life_days} {result.shelf_life_days === 1 ? 'Day' : 'Days'} Left
+                      </div>
+                      <div className="text-xs text-muted-foreground">Estimated Shelf Life</div>
+                    </div>
+                  </div>
+                  {result.shelf_life_days <= 2 && (
+                    <Badge variant="destructive" className="animate-pulse">
+                      Use Soon!
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-sm font-medium mt-2">
+                  💡 {result.storage_recommendation}
+                </div>
+              </div>
 
               <div className="bg-muted/50 rounded-lg p-3">
                 <div className="flex items-start gap-2">
