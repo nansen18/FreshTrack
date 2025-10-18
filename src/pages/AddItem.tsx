@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, Leaf, Calendar, Package, QrCode } from 'lucide-react';
+import { ArrowLeft, Leaf, Calendar, Package } from 'lucide-react';
 import AIFoodAdvisor from '@/components/AIFoodAdvisor';
 import CommunityHub from '@/components/CommunityHub';
 import { useToast } from '@/hooks/use-toast';
@@ -139,30 +138,30 @@ export default function AddItem() {
         </div>
       </header>
 
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Add New Food Item
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="name">Product Name *</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="e.g., Organic Bananas, Whole Milk, Chicken Breast"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className={errors.name ? 'border-destructive' : ''}
-                />
-                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
-              </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 justify-center">
+                <Package className="h-5 w-5" />
+                Add New Food Item
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Product Name *</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="e.g., Organic Bananas, Whole Milk"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className={errors.name ? 'border-destructive' : ''}
+                  />
+                  {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
+                </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="purchase-date" className="flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
@@ -192,62 +191,42 @@ export default function AddItem() {
                   />
                   {errors.expiry_date && <p className="text-sm text-destructive">{errors.expiry_date}</p>}
                 </div>
-              </div>
 
-              {/* Barcode Scanner (Future Feature) */}
-              <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-6 text-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="outline" disabled className="pointer-events-auto">
-                        <QrCode className="h-4 w-4 mr-2" />
-                        Scan Barcode
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Coming Soon! Barcode scanning will auto-fill product details.</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Quick product entry via barcode scanning - Coming Soon!
-                </p>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/dashboard')}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  className="flex-1"
-                >
-                  {loading ? 'Adding...' : 'Add Item'}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate('/dashboard')}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-1"
+                  >
+                    {loading ? 'Adding...' : 'Add Item'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* AI Food Advisor */}
-        {name && (
-          <div className="mt-6">
+        <div className="max-w-md mx-auto mt-6">
+          {name && (
             <AIFoodAdvisor 
               productName={name}
               category="general"
               daysUntilExpiry={expiryDate ? Math.floor((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 7}
             />
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Community Hub */}
-        <div className="mt-6">
+        <div className="max-w-4xl mx-auto mt-6">
           <CommunityHub />
         </div>
       </div>
