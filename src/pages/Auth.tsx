@@ -6,45 +6,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Leaf, ShoppingCart, UserPlus, LogIn } from 'lucide-react';
+import { Store, UserPlus, LogIn } from 'lucide-react';
 import { z } from 'zod';
 
 const authSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  role: z.enum(['consumer', 'retailer']).optional()
+  password: z.string().min(6, 'Password must be at least 6 characters')
 });
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState<'consumer' | 'retailer'>('consumer');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   
-  const { signIn, signUp, user, profile } = useAuth();
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && profile) {
-      // Redirect based on user role
-      if (profile.role === 'retailer') {
-        navigate('/retailer');
-      } else {
-        navigate('/dashboard');
-      }
+    if (user) {
+      navigate('/');
     }
-  }, [user, profile, navigate]);
+  }, [user, navigate]);
 
   const validateForm = () => {
     try {
-      authSchema.parse({ 
-        email, 
-        password, 
-        role: isLogin ? undefined : role 
-      });
+      authSchema.parse({ email, password });
       setErrors({});
       return true;
     } catch (error) {
@@ -72,7 +60,7 @@ export default function Auth() {
       if (isLogin) {
         await signIn(email, password);
       } else {
-        await signUp(email, password, role);
+        await signUp(email, password, 'retailer');
       }
     } finally {
       setLoading(false);
@@ -84,14 +72,14 @@ export default function Auth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <Leaf className="h-8 w-8 text-primary mr-2" />
-            <h1 className="text-2xl font-bold text-primary">FreshTrack</h1>
+            <Store className="h-10 w-10 text-primary mr-2" />
+            <h1 className="text-3xl font-bold text-primary">FreshTrack</h1>
           </div>
-          <CardTitle>{isLogin ? 'Welcome Back' : 'Create Account'}</CardTitle>
+          <CardTitle>{isLogin ? 'Retailer Portal' : 'Create Retailer Account'}</CardTitle>
           <CardDescription>
             {isLogin 
-              ? 'Sign in to track your food and reduce waste' 
-              : 'Join the movement to reduce food waste'
+              ? 'Sign in to manage your inventory and reduce waste' 
+              : 'Join FreshTrack to optimize your store operations'
             }
           </CardDescription>
         </CardHeader>
@@ -140,11 +128,11 @@ export default function Auth() {
               
               <TabsContent value="signup" className="space-y-4 mt-0">
                 <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
+                  <Label htmlFor="signup-email">Store Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
-                    placeholder="your@email.com"
+                    placeholder="store@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className={errors.email ? 'border-destructive' : ''}
@@ -163,29 +151,6 @@ export default function Auth() {
                     className={errors.password ? 'border-destructive' : ''}
                   />
                   {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="role">I am a...</Label>
-                  <Select value={role} onValueChange={(value) => setRole(value as 'consumer' | 'retailer')}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="consumer">
-                        <div className="flex items-center gap-2">
-                          <Leaf className="h-4 w-4" />
-                          Consumer - Track my food items
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="retailer">
-                        <div className="flex items-center gap-2">
-                          <ShoppingCart className="h-4 w-4" />
-                          Retailer - Manage my products
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </TabsContent>
               
