@@ -205,48 +205,6 @@ export type Database = {
         }
         Relationships: []
       }
-      reverse_commerce_items: {
-        Row: {
-          ai_reasoning: string | null
-          category: string
-          co2_saved: number | null
-          created_at: string | null
-          expiry_date: string
-          id: string
-          product_id: string
-          product_name: string
-          retailer_id: string
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          ai_reasoning?: string | null
-          category: string
-          co2_saved?: number | null
-          created_at?: string | null
-          expiry_date: string
-          id?: string
-          product_id: string
-          product_name: string
-          retailer_id: string
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          ai_reasoning?: string | null
-          category?: string
-          co2_saved?: number | null
-          created_at?: string | null
-          expiry_date?: string
-          id?: string
-          product_id?: string
-          product_name?: string
-          retailer_id?: string
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       user_roles: {
         Row: {
           created_at: string | null

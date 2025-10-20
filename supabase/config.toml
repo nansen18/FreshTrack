@@ -2,6 +2,3 @@ project_id = "jtqfkhhcovnwnantrcjk"
 
 [functions.analyze-freshness]
 verify_jwt = true
-
-[functions.classify-reverse-commerce]
-verify_jwt = true
