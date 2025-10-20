@@ -25,6 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { format, differenceInDays, isAfter, isBefore, addDays } from 'date-fns';
 import RetailerAnalytics from '@/components/RetailerAnalytics';
+import ReverseCommerceHub from '@/components/ReverseCommerceHub';
 
 interface RetailerProduct {
   id: string;
@@ -299,6 +300,13 @@ export default function RetailerDashboard() {
         {/* Analytics Section */}
         <div className="mb-8">
           <RetailerAnalytics retailerId={user?.id} />
+        </div>
+
+        <Separator className="my-8" />
+
+        {/* Reverse Commerce Hub */}
+        <div className="mb-8">
+          <ReverseCommerceHub retailerId={user?.id || ''} />
         </div>
 
         <Separator className="my-8" />
